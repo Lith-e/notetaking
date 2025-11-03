@@ -122,7 +122,7 @@
         .task-item .task-text { flex:1; }
         .task-item .task-text.completed { text-decoration: line-through; color:#6b7280; }
 
-        #noteEditor mark, #notePreview mark { background: #fff176; padding: 0 2px; border-radius: 2px; }
+        #noteEditor mark { background: #fff176; padding: 0 2px; border-radius: 2px; }
 
         .notification { position: fixed; top:20px; right:20px; background:var(--primary-color); color:white; padding:14px 24px; border-radius:var(--radius); z-index:1001; box-shadow:var(--shadow); transform: translateX(150%); transition: transform 0.4s ease; display:flex; align-items:center; gap:10px; }
         .notification.show { transform: translateX(0); }
@@ -814,12 +814,10 @@
         });
 
         window.app = {
-            selectNote: function(id) { if (typeof window.appInstance !== 'undefined') window.appInstance.selectNote(id); else if (app) app.selectNote(id); },
+            selectNote: function(id) { if (app) app.selectNote(id); },
             deleteNoteFromList: function(noteId, event) { if (app) app.deleteNoteFromList(noteId, event); },
             createNewNote: function() { if (app) app.createNewNote(); },
         };
-        setTimeout(()=>{ window.appInstance = app; }, 200);
-
     </script>
 </body>
 </html>
