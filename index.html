@@ -682,4 +682,144 @@
                 range.insertNode(wrapper);
                 sel.removeAllRanges();
                 const r2 = document.createRange();
-               
+                r2.selectNodeContents(wrapper);
+                sel.addRange(r2);
+            }
+
+            generateAITags(content) {
+                if (!content || content.length < 10) {
+                    document.getElementById('tagsContainer').innerHTML = '<div class="tag-placeholder">Write something to generate tags...</div>';
+                    return;
+                }
+                const commonWords = ['the','and','is','in','to','a','that','it','with','for','as','was','on','are','this','but','not','they','have','has','had'];
+                const words = content.toLowerCase().replace(/[^\w\s]/g,'').split(/\s+/).filter(w=>w.length>3 && !commonWords.includes(w));
+                const wc = {};
+                words.forEach(w => wc[w] = (wc[w] || 0) + 1);
+                const tags = Object.entries(wc).sort((a,b)=>b[1]-a[1]).slice(0,5).map(e=>e[0]);
+                this.updateAITags(tags);
+            }
+
+            updateAITags(tags) {
+                const container = document.getElementById('tagsContainer');
+                if (!tags || tags.length === 0) {
+                    container.innerHTML = '<div class="tag-placeholder">Write something to generate tags...</div>';
+                    return;
+                }
+                container.innerHTML = tags.map(t => `<span class="tag"><i class="fas fa-tag"></i> ${t}</span>`).join('');
+            }
+
+            shareNote() {
+                if (!this.currentNote) { this.showNotification('Please create a note first!'); return; }
+                const shareLink = `${window.location.origin}/share/${this.currentNote.id}`;
+                document.getElementById('shareLink').value = shareLink;
+                document.getElementById('shareModal').style.display = 'block';
+            }
+
+            shareToPlatform(platform) {
+                const link = document.getElementById('shareLink').value;
+                let url = '';
+                switch(platform) {
+                    case 'twitter': url = `https://twitter.com/intent/tweet?text=Check out this note&url=${encodeURIComponent(link)}`; break;
+                    case 'linkedin': url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`; break;
+                    case 'whatsapp': url = `https://wa.me/?text=Check out this note: ${encodeURIComponent(link)}`; break;
+                }
+                if (url) window.open(url, '_blank');
+            }
+
+            showExportModal() {
+                if (!this.currentNote) { this.showNotification('Please create a note first!'); return; }
+                document.getElementById('exportModal').style.display = 'block';
+            }
+
+            exportNote(format) {
+                if (!this.currentNote) return;
+                const content = this.currentNote.content || '';
+                const title = this.currentNote.title || 'note';
+                let blob, filename;
+                switch(format) {
+                    case 'markdown':
+                        const md = this.htmlToPlainText(content);
+                        blob = new Blob([md], { type: 'text/markdown' });
+                        filename = `${title}.md`;
+                        break;
+                    case 'html':
+                        const html = `<!doctype html><html><head><meta charset="utf-8"><title>${this.escapeHTML(title)}</title></head><body>${content}</body></html>`;
+                        blob = new Blob([html], { type: 'text/html' });
+                        filename = `${title}.html`;
+                        break;
+                    case 'text':
+                        blob = new Blob([this.htmlToPlainText(content)], { type: 'text/plain' });
+                        filename = `${title}.txt`;
+                        break;
+                    case 'pdf':
+                        this.showNotification('PDF export requires additional libraries. Use HTML or Markdown.');
+                        return;
+                }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+                document.getElementById('exportModal').style.display = 'none';
+                this.showNotification(`Exported as ${format.toUpperCase()}!`);
+            }
+
+            htmlToPlainText(html) {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = html;
+                return tmp.innerText || tmp.textContent || '';
+            }
+
+            createNewFolder() {
+                const input = document.getElementById('newFolderName');
+                const folderName = input.value.trim();
+                if (!folderName) { this.showNotification('Please enter a folder name'); return; }
+                this.showNotification(`Folder "${folderName}" created!`);
+                document.getElementById('folderModal').style.display = 'none';
+                input.value = '';
+            }
+
+            toggleTheme() {
+                const currentTheme = document.documentElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                const themeIcon = document.querySelector('#themeToggle i');
+                themeIcon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+
+            applyTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                const themeIcon = document.querySelector('#themeToggle i');
+                themeIcon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+
+            showNotification(message) {
+                const n = document.getElementById('notification');
+                n.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+                n.classList.add('show');
+                setTimeout(()=> n.classList.remove('show'), 3000);
+            }
+
+            escapeHTML(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new SmartNotesApp();
+        });
+
+        window.app = {
+            selectNote: function(id) { if (typeof window.appInstance !== 'undefined') window.appInstance.selectNote(id); else if (app) app.selectNote(id); },
+            deleteNoteFromList: function(noteId, event) { if (app) app.deleteNoteFromList(noteId, event); },
+            createNewNote: function() { if (app) app.createNewNote(); },
+        };
+        setTimeout(()=>{ window.appInstance = app; }, 200);
+
+    </script>
+</body>
+</html>
